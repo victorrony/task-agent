@@ -1,0 +1,36 @@
+# FinanceAgent Pro - Assistente Financeiro Inteligente
+# Dependencias para o agente multiplicador de conta bancaria
+
+# LangChain - Framework para agentes
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langchain-community>=0.0.10
+langchain-google-genai>=0.0.5
+
+# Google Gemini - LLM
+google-generativeai>=0.3.0
+
+# OpenAI - LLM alternativo
+openai>=1.0.0
+
+# Ambiente
+python-dotenv>=1.0.0
+
+# Busca Real na Internet
+duckduckgo-search>=4.0.0
+
+# Requisicoes HTTP para APIs financeiras
+requests>=2.31.0
+
+# Interface Web
+gradio>=4.0.0
+
+# Open Finance Aggregator
+pluggy-sdk>=0.6.0
+
+# Exportação de Relatórios
+fpdf2>=2.7.0
+openpyxl>=3.1.0
+
+# Banco de dados
+# sqlite3 ja vem incluso no Python

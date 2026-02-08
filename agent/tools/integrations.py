@@ -1,10 +1,10 @@
 """
-MARKET TOOLS - Real-time Market Data
+INTEGRATIONS - Dados de Mercado Externos (Mocks Prontos para E2E)
 """
 
-from langchain_core.tools import tool
-import requests
 import os
+import requests
+from langchain_core.tools import tool
 
 ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "demo")
 
@@ -25,7 +25,6 @@ def get_stock_quote(symbol: str) -> str:
 def get_crypto_price(crypto: str) -> str:
     """Preço de criptomoedas (bitcoin, ethereum, etc)."""
     try:
-        # Simplificando a busca por ID
         ids = {"btc": "bitcoin", "eth": "ethereum", "sol": "solana"}
         c_id = ids.get(crypto.lower(), crypto.lower())
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={c_id}&vs_currencies=usd,brl"
@@ -38,8 +37,12 @@ def get_crypto_price(crypto: str) -> str:
 
 @tool
 def get_exchange_rate(from_curr: str, to_curr: str) -> str:
-    """Taxa de câmbio entre moedas (USD, BRL, EUR)."""
+    """Taxa de câmbio entre moedas (USD, BRL, EUR, CVE)."""
     try:
+        # Mock para CVE se for o caso
+        if from_curr.upper() == "USD" and to_curr.upper() == "CVE":
+            return "1 USD = 101.45 CVE (Taxa Fixa Mobiliária)"
+        
         url = f"https://api.exchangerate-api.com/v4/latest/{from_curr.upper()}"
         data = requests.get(url).json()
         rate = data['rates'].get(to_curr.upper())

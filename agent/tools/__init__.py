@@ -1,13 +1,46 @@
-from .finance import get_account_balance, add_transaction, analyze_finances, set_user_id
-from .market import get_stock_quote, get_crypto_price, get_exchange_rate
-from .portfolio import manage_portfolio, manage_goals, suggest_investments
-from .user_tools import set_user_preference, get_user_profile
-from .utility import calculate, web_search, get_now
+"""
+AGENT TOOLS - Agregação de Ferramentas Modularizadas
+"""
+
+from .finance_tools import (
+    get_account_balance, 
+    add_transaction, 
+    manage_portfolio, 
+    suggest_investments,
+    set_user_preference, 
+    get_user_profile,
+    set_user_id
+)
+from .integrations import (
+    get_stock_quote, 
+    get_crypto_price, 
+    get_exchange_rate
+)
+from .core_tools import (
+    calculate, 
+    web_search, 
+    get_now
+)
+
+# Exporta set_user_id para o TaskAgent
+__all__ = ["ALL_TOOLS", "set_user_id"]
 
 ALL_TOOLS = [
-    get_account_balance, add_transaction, analyze_finances,
-    get_stock_quote, get_crypto_price, get_exchange_rate,
-    manage_portfolio, manage_goals, suggest_investments,
-    set_user_preference, get_user_profile,
-    calculate, web_search, get_now
+    # Finance & Portfolio
+    get_account_balance, 
+    add_transaction, 
+    manage_portfolio, 
+    suggest_investments,
+    set_user_preference, 
+    get_user_profile,
+    
+    # Integrations (External APIs)
+    get_stock_quote, 
+    get_crypto_price, 
+    get_exchange_rate,
+    
+    # Core Utilities
+    calculate, 
+    web_search, 
+    get_now
 ]

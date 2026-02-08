@@ -34,18 +34,20 @@ def create_dashboard_tab():
 
 def update_dashboard(user_id=1):
     """Atualiza os componentes do dashboard para um usuário."""
-    b, p, g, a = get_quick_stats(user_id)
+    stats = get_quick_stats(user_id)
     
     # Formatação HTML para os cards
-    b_html = create_stat_card("Saldo Total", b)
+    b_html = create_stat_card("Saldo Total", stats['balance'])
     
+    p = stats['profit']
     p_color = "#10b981" if "Erro" not in p and "-" not in p else "#ef4444"
     p_html = create_stat_card("Resultado Mensal", p, color=p_color)
     
-    g_html = create_stat_card("Metas Ativas", g)
+    g_html = create_stat_card("Metas Ativas", stats['goals'])
     
-    a_color = "#ef4444" if a == "🚨 Alerta" else "#f59e0b" if a == "⚠️ Limite" else "#10b981"
-    a_html = create_stat_card("Gastos", a, color=a_color)
+    a = stats['status']
+    a_color = "#ef4444" if a == "🚨 Dívida" else "#f59e0b" if a == "⚠️ Reserva" else "#10b981"
+    a_html = create_stat_card("Status de Saúde", a, color=a_color)
 
     pie = get_expense_chart(user_id)
     line = get_balance_history_chart(user_id)

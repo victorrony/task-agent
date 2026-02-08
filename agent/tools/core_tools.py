@@ -1,5 +1,5 @@
 """
-UTILITY TOOLS - Ferramentas de Suporte
+CORE TOOLS - Suporte e Utilidades Gerais
 """
 
 from langchain_core.tools import tool
@@ -19,10 +19,10 @@ def calculate(expression: str) -> str:
 
 @tool
 def web_search(query: str) -> str:
-    """Pesquisa na internet."""
+    """Pesquisa na internet para obter informações atualizadas."""
     return search.run(query)
 
 @tool
 def get_now() -> str:
-    """Data e hora atual."""
+    """Retorna a data e hora atual no formato DD/MM/AAAA HH:MM."""
     return datetime.now().strftime("%d/%m/%Y %H:%M")

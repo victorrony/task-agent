@@ -23,8 +23,7 @@ def create_chat_tab():
                 chatbot = gr.Chatbot(
                     height=550,
                     placeholder="Olá! Sou seu consultor financeiro. O que vamos planejar hoje?",
-                    show_label=False,
-                    type="messages" # Updated for Gradio 4+ compatibility with messages
+                    show_label=False
                 )
                 with gr.Row():
                     msg_input = gr.Textbox(
@@ -33,19 +32,16 @@ def create_chat_tab():
                         scale=4,
                     )
                     send_btn = gr.Button("Enviar", variant="primary", scale=1)
+                    clear_btn = gr.Button("Limpar", variant="secondary", scale=1)
             
             # Now add Examples to the side column using the available msg_input
             with side_col:
-                gr.Examples(
-                    examples=[
-                        "Qual meu saldo atual?",
-                        "Gastei R$ 50 em farmácia hoje",
-                        "Sugira investimentos para R$ 2000",
-                        "Como está o preço do Bitcoin?",
-                        "Crie uma meta de R$ 10.000 para viagem"
-                    ],
-                    inputs=msg_input,
-                    label=None
+                gr.Markdown(
+                    "- Qual meu saldo atual?\n"
+                    "- Gastei R$ 50 em farmácia hoje\n"
+                    "- Sugira investimentos para R$ 2000\n"
+                    "- Como está o preço do Bitcoin?\n"
+                    "- Crie uma meta de R$ 10.000 para viagem"
                 )
                 gr.Markdown("---")
     return tab, [chatbot, msg_input, send_btn, clear_btn, mode_selector]

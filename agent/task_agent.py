@@ -6,7 +6,7 @@ Este agente agora possui MEMÓRIA, permitindo conversas fluidas.
 """
 
 import os
-from typing import List
+from typing import List, Any
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, ToolMessage
@@ -16,6 +16,41 @@ from .logic import FinancialAdvisor
 
 # Carrega variáveis de ambiente (.env)
 load_dotenv()
+
+
+def _normalize_content(content: Any) -> str:
+    """
+    Normaliza response.content do Gemini 2.5 para string.
+
+    O Gemini 2.5 pode retornar:
+    - String simples: "texto"
+    - Lista de objetos: [{type: "text", text: "...", extras: ...}, ...]
+
+    Esta função sempre retorna uma string.
+    """
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        # Extrai o texto de cada objeto e concatena
+        text_parts = []
+        for item in content:
+            if isinstance(item, dict):
+                # Tenta extrair do campo 'text' primeiro
+                if 'text' in item:
+                    text_parts.append(str(item['text']))
+                # Fallback: pega qualquer campo de texto
+                elif 'content' in item:
+                    text_parts.append(str(item['content']))
+                else:
+                    # Se não encontrou campo de texto, converte o dict inteiro
+                    text_parts.append(str(item))
+            else:
+                text_parts.append(str(item))
+        return ''.join(text_parts)
+
+    # Fallback: converte para string
+    return str(content) if content else ""
 
 
 class TaskAgent:
@@ -112,11 +147,13 @@ Analisa o pedido do utilizador e responde EXCLUSIVAMENTE com um JSON:
 }""")
         recent_history = history[-3:] if history else []
         messages = [system_msg] + recent_history + [HumanMessage(content=f"Tarefa: {task}")]
-        
+
         try:
             response = self.llm.invoke(messages)
             import json
-            content = response.content.replace("```json", "").replace("```", "").strip()
+            # Normaliza content para string (corrige Gemini 2.5)
+            content = _normalize_content(response.content)
+            content = content.replace("```json", "").replace("```", "").strip()
             return json.loads(content)
         except Exception:
             return {"intent": "OUTRO", "requires_tools": True, "risk_level": "MEDIO", "reasoning": "Erro na classificação."}
@@ -124,8 +161,9 @@ Analisa o pedido do utilizador e responde EXCLUSIVAMENTE com um JSON:
     def _generate_plan(self, intent_data: dict, task: str) -> str:
         """Gera um plano de execução de alto nível."""
         plan_prompt = f"Cria um plano de 1-3 passos para resolver: '{task}'. Intenção: {intent_data['intent']}. Responde em 1 linha."
-        response = self.llm.invoke([SystemMessage(content=plan_prompt)])
-        return response.content
+        response = self.llm.invoke([SystemMessage(content="Tu és um planeador de tarefas financeiras."), HumanMessage(content=plan_prompt)])
+        # Normaliza content para string (corrige Gemini 2.5)
+        return _normalize_content(response.content)
 
     def run(self, task: str) -> str:
         """Executa a tarefa com Ciclo de Vida Industrial e Auditoria L4 Detalhada."""
@@ -154,13 +192,41 @@ Analisa o pedido do utilizador e responde EXCLUSIVAMENTE com um JSON:
             if self.auditor_mode:
                 full_system_prompt += "\n\n### MODO AUDITOR ATIVO\nJustifique cada decisão tecnicamente no final."
 
-            messages = [SystemMessage(content=full_system_prompt)] + history
-            messages.append(HumanMessage(content=task))
-            self.memory.save_message(messages[-1])
+            # Montagem e Sanitização de Mensagens
+            system_content = full_system_prompt.strip() or "System ready."
+            messages = [SystemMessage(content=system_content)]
+            
+            # Filtra histórico inválido e garante string
+            for msg in history:
+                if msg.content is not None:
+                    # Força string e remove vazios
+                    s_content = str(msg.content).strip()
+                    if s_content:
+                        msg.content = s_content
+                        messages.append(msg)
+            
+            # Adiciona mensagem atual
+            if not task or not task.strip():
+                return "❌ Erro: Mensagem vazia."
+            
+            user_msg = HumanMessage(content=str(task).strip())
+            messages.append(user_msg)
+            self.memory.save_message(user_msg)
             
             iteration = 0
             while iteration < 5:
-                response = self.llm_with_tools.invoke(messages)
+                # DEBUG: Imprimir estrutura para identificar falhas
+                if self.verbose:
+                    print(f"--- Iteration {iteration} Messages ---")
+                    for m in messages:
+                        print(f"[{m.type}] {str(m.content)[:50]}...")
+                
+                try:
+                    response = self.llm_with_tools.invoke(messages)
+                except Exception as invoke_err:
+                    print(f"❌ ERRO INVOKE: {invoke_err}")
+                    return f"❌ Erro na API do Modelo: {str(invoke_err)}"
+
                 messages.append(response)
                 self.memory.save_message(response)
                 
@@ -168,7 +234,8 @@ Analisa o pedido do utilizador e responde EXCLUSIVAMENTE com um JSON:
                     # Finalização com sucesso
                     reasoning_path.append("FIM: Tarefa concluída sem mais chamadas.")
                     self.memory.save_audit_log(task, "\n".join(reasoning_path), tools_used)
-                    return response.content
+                    # Normaliza content para string (corrige Gemini 2.5)
+                    return _normalize_content(response.content)
                 
                 # Execução de Ferramentas com Validação e Log L4
                 for tool_call in response.tool_calls:

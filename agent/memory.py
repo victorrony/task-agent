@@ -26,6 +26,8 @@ class MemoryManager:
         # Serialização completa para preservar metadados (tool_calls, IDs, etc)
         message_json = json.dumps(message_to_dict(message))
         content = message.content
+        if isinstance(content, list):
+            content = " ".join(str(part.get("text", "")) if isinstance(part, dict) else str(part) for part in content)
         
         conn = get_db_connection()
         conn.execute(

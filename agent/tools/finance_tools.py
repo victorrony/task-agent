@@ -19,6 +19,10 @@ def set_user_id(user_id: int):
     """Define o ID do utilizador ativo para esta thread/sessão."""
     USER_ID_CTX.set(user_id)
 
+def get_current_user_id() -> int:
+    """Retorna o ID do utilizador ativo nesta thread/sessão."""
+    return USER_ID_CTX.get()
+
 def log_tool_action(action: str, details: str):
     """Regista uma ação de ferramenta num ficheiro de log local (Auditoria L4 Simples)."""
     uid = get_current_user_id()

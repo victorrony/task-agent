@@ -9,7 +9,7 @@ import os
 from typing import List, Any
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, ToolMessage
+from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AIMessage, ToolMessage
 from .memory import MemoryManager
 from .tools import set_user_id, ALL_TOOLS
 from .logic import FinancialAdvisor
@@ -135,16 +135,36 @@ class TaskAgent:
         self._context_cache_time = datetime.now()
         return context
 
+    def _sanitize_history(self, history: List[BaseMessage]) -> List[BaseMessage]:
+        """Remove tool_calls e ToolMessages do histórico para evitar INVALID_ARGUMENT do Gemini.
+
+        O Gemini exige sequência estrita: user → model(tool_calls) → tool → model → user.
+        Mensagens de sessões anteriores podem violar esta regra, causando erro 400.
+        Solução: manter apenas HumanMessage e AIMessage (sem tool_calls) no histórico.
+        """
+        sanitized = []
+        for msg in history:
+            if isinstance(msg, ToolMessage):
+                continue
+            if isinstance(msg, AIMessage):
+                clean_msg = AIMessage(content=msg.content or "")
+                if not clean_msg.content.strip():
+                    continue
+                sanitized.append(clean_msg)
+            else:
+                sanitized.append(msg)
+        return sanitized
+
     def _classify_intent(self, task: str, history: List[BaseMessage]) -> dict:
         """Classifica a intenção, nível de risco e necessidade de ferramentas."""
         system_msg = SystemMessage(content="""Tu és o Classificador de Intenções do FinanceAgent Pro.
-Analisa o pedido do utilizador e responde EXCLUSIVAMENTE com um JSON:
-{
-  "intent": "ANALISE" | "REGISTO" | "SIMULACAO" | "EDUCACAO" | "OUTRO",
-  "requires_tools": boolean,
-  "risk_level": "BAIXO" | "MEDIO" | "ALTO",
-  "reasoning": "porque?"
-}""")
+        Analisa o pedido do utilizador e responde EXCLUSIVAMENTE com um JSON:
+        {
+        "intent": "ANALISE" | "REGISTO" | "SIMULACAO" | "EDUCACAO" | "OUTRO",
+        "requires_tools": boolean,
+        "risk_level": "BAIXO" | "MEDIO" | "ALTO",
+        "reasoning": "porque?"
+        }""")
         recent_history = history[-3:] if history else []
         messages = [system_msg] + recent_history + [HumanMessage(content=f"Tarefa: {task}")]
 
@@ -196,8 +216,8 @@ Analisa o pedido do utilizador e responde EXCLUSIVAMENTE com um JSON:
             system_content = full_system_prompt.strip() or "System ready."
             messages = [SystemMessage(content=system_content)]
             
-            # Filtra histórico inválido e garante string
-            for msg in history:
+            # Sanitiza histórico: remove ToolMessages e tool_calls de sessões anteriores
+            for msg in self._sanitize_history(history):
                 if msg.content is not None:
                     # Força string e remove vazios
                     s_content = str(msg.content).strip()
@@ -219,46 +239,54 @@ Analisa o pedido do utilizador e responde EXCLUSIVAMENTE com um JSON:
                 if self.verbose:
                     print(f"--- Iteration {iteration} Messages ---")
                     for m in messages:
-                        print(f"[{m.type}] {str(m.content)[:50]}...")
+                        print(f"[{m.type}] Content Len: {len(str(m.content))}")
                 
                 try:
+                    # Tenta invocar COM TOOLS
                     response = self.llm_with_tools.invoke(messages)
+                    
+                    # Normaliza content (Gemini 2.5 retorna lista em vez de string)
+                    if hasattr(response, 'content') and response.content:
+                        response.content = _normalize_content(response.content)
+                    else:
+                        response.content = ""
+                        
                 except Exception as invoke_err:
                     print(f"❌ ERRO INVOKE: {invoke_err}")
                     return f"❌ Erro na API do Modelo: {str(invoke_err)}"
 
                 messages.append(response)
                 self.memory.save_message(response)
-                
+
+                # Se NÃO há tool_calls, o LLM terminou → retorna a resposta final
                 if not response.tool_calls:
-                    # Finalização com sucesso
-                    reasoning_path.append("FIM: Tarefa concluída sem mais chamadas.")
+                    final_text = _normalize_content(response.content)
+                    reasoning_path.append(f"FIM: Resposta gerada em {iteration+1} iteração(ões)")
                     self.memory.save_audit_log(task, "\n".join(reasoning_path), tools_used)
-                    # Normaliza content para string (corrige Gemini 2.5)
-                    return _normalize_content(response.content)
-                
+                    return final_text
+
                 # Execução de Ferramentas com Validação e Log L4
                 for tool_call in response.tool_calls:
                     t_name = tool_call["name"]
                     t_args = tool_call["args"]
                     tools_used.append(t_name)
-                    
+
                     if t_name in self.tool_map:
                         result = self.tool_map[t_name].invoke(t_args)
-                        
+
                         # Validação de Segurança/Erro
                         status_trace = "SUCESSO"
                         if isinstance(result, dict) and "error" in result:
                             status_trace = f"ERRO: {result['error']}"
-                        
+
                         reasoning_path.append(f"STEP {iteration+1}: Chamada {t_name}({t_args}) -> {status_trace}")
-                        
+
                         tool_msg = ToolMessage(content=str(result), tool_call_id=tool_call["id"])
                         messages.append(tool_msg)
                         self.memory.save_message(tool_msg)
-                
+
                 iteration += 1
-                
+
             # Fallback de Limite
             alert_msg = "❌ LIMITE ATINGIDO: O agente não conseguiu resolver a tarefa em 5 iterações."
             reasoning_path.append(alert_msg)

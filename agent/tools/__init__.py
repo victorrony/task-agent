@@ -3,12 +3,14 @@ AGENT TOOLS - Agregação de Ferramentas Modularizadas
 """
 
 from .finance_tools import (
-    get_account_balance, 
-    add_transaction, 
-    manage_portfolio, 
+    get_account_balance,
+    set_account_balance,
+    add_transaction,
+    manage_portfolio,
     suggest_investments,
-    set_user_preference, 
+    set_user_preference,
     get_user_profile,
+    manage_goals,
     set_user_id
 )
 from .integrations import (
@@ -27,20 +29,22 @@ __all__ = ["ALL_TOOLS", "set_user_id"]
 
 ALL_TOOLS = [
     # Finance & Portfolio
-    get_account_balance, 
-    add_transaction, 
-    manage_portfolio, 
+    get_account_balance,
+    set_account_balance,
+    add_transaction,
+    manage_portfolio,
     suggest_investments,
-    set_user_preference, 
+    set_user_preference,
     get_user_profile,
-    
+    manage_goals,
+
     # Integrations (External APIs)
-    get_stock_quote, 
-    get_crypto_price, 
+    get_stock_quote,
+    get_crypto_price,
     get_exchange_rate,
-    
+
     # Core Utilities
-    calculate, 
-    web_search, 
+    calculate,
+    web_search,
     get_now
 ]

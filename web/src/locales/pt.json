@@ -1,0 +1,61 @@
+{
+  "app.title": "FinanceAgent Pro",
+  "app.subtitle": "Gestao financeira inteligente com IA",
+  "app.status.online": "Online",
+
+  "header.refresh.title": "Atualizar dados",
+  "header.hideValues": "Ocultar valores",
+  "header.showValues": "Mostrar valores",
+
+  "stats.balance.title": "Saldo Total",
+  "stats.profit.title": "Resultado Mensal",
+  "stats.health.title": "Saude Financeira",
+  "stats.goals.title": "Metas Ativas",
+  "stats.reserve.title": "Reserva Emergência",
+  "stats.trend.positive": "Positivo",
+  "stats.trend.negative": "Negativo",
+
+  "chart.title": "Evolucao do Saldo",
+  "chart.empty": "Sem dados para o grafico. Adicione transacoes pelo chat.",
+  "chart.tooltip.balance": "Saldo",
+
+  "transactions.title": "Ultimas Transacoes",
+  "transactions.empty": "Sem transacoes ainda.",
+  "transactions.empty.cta": "Adicione uma pelo chat.",
+
+  "goals.title": "Metas Financeiras",
+  "goals.empty": "Sem metas ativas.",
+  "goals.empty.cta": "Use o chat para criar uma meta.",
+
+  "chat.title": "Assistente Financeiro",
+  "chat.mode.assistant": "Assistente",
+  "chat.mode.advisor": "Consultor",
+  "chat.placeholder": "Digite sua mensagem...",
+  "chat.thinking": "Pensando...",
+  "chat.welcome": "Ola! Sou seu FinanceAgent Pro. Como posso ajudar nas suas financas hoje?",
+  "chat.error": "Erro ao conectar com o agente. Verifique se o backend esta rodando.",
+  "chat.attach": "Anexar ficheiro",
+  "chat.fileTooBig": "Ficheiro excede o limite de 10MB",
+  "chat.unsupportedFile": "Tipo de ficheiro nao suportado",
+  "chat.stop": "Parar geracao",
+  "chat.stopped": "Geracao interrompida pelo utilizador.",
+
+  "quickCommands.title": "Comandos Rapidos",
+  "quickCommands.analyze": "Analisar gastos",
+  "quickCommands.simulate": "Simular investimento",
+  "quickCommands.viewGoals": "Ver metas",
+  "quickCommands.addExpense": "Adicionar despesa",
+
+  "categories.title": "Gastos por Categoria",
+  "categories.empty": "Sem dados de gastos. Adicione transacoes pelo chat.",
+
+  "toast.saved": "Dados registados com sucesso!",
+  "toast.goalUpdated": "Meta atualizada com sucesso!",
+  "toast.error": "Erro ao processar. Tente novamente.",
+  "toast.stopped": "Geracao interrompida",
+  "toast.fileAttached": "Ficheiro anexado",
+
+  "error.title": "Erro ao carregar",
+  "error.retry": "Tentar novamente",
+  "error.message": "Erro ao carregar dados. Verifique se o backend esta rodando."
+}

@@ -101,6 +101,7 @@ def get_quick_stats(user_id=1):
         result = {
             "balance": f"{currency} {balance:,.2f}",
             "profit": f"{currency} {profit:,.2f}",
+            "reserve": f"{currency} {status_health['current_reserve']:,.2f}",
             "goals": str(goals_count),
             "status": status_msg,
             "raw_balance": balance
@@ -210,6 +211,39 @@ def get_users():
         return df.to_dict('records')
     except Exception:
         return [{"id": 1, "name": "Utilizador Base"}]
+
+def get_expense_categories(user_id=1):
+    """Retorna distribuição de gastos por categoria (últimos 90 dias)."""
+    cached = _get_from_cache(user_id, "expense_categories")
+    if cached: return cached
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT category, COALESCE(SUM(amount), 0) as total
+            FROM transactions
+            WHERE user_id = ? AND type = 'saida'
+            AND date >= date('now', '-90 days')
+            GROUP BY category
+            ORDER BY total DESC
+        """, (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+
+        categories = []
+        for name, total in rows:
+            categories.append({
+                "name": name or "Outros",
+                "value": round(total, 2)
+            })
+
+        _save_to_cache(user_id, "expense_categories", categories)
+        return categories
+    except Exception as e:
+        print(f"❌ Erro DataService (categories): {e}")
+        return []
+
 
 def get_goals_progress(user_id=1):
     """Calcula progresso de metas (Apenas leitura e formatação)."""

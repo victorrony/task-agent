@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from contextvars import ContextVar
 from ..db import get_db_connection
 from ..logic import FinancialAdvisor
+from ..data_service import clear_cache
 
 # ═══════════════════════════════════════════════════════════
 # PEÇA 1: GESTÃO DE CONTEXTO (MULTI-USER)
@@ -52,6 +53,30 @@ def get_account_balance() -> str:
         return f"Saldo atual: {row['currency']} {row['balance']:,.2f} (atualizado em {row['updated_at']})"
     except Exception as e:
         return f"Erro ao consultar saldo: {str(e)}"
+
+@tool
+def set_account_balance(balance: float, currency: str = "CVE") -> str:
+    """
+    Define um novo saldo na conta bancária.
+
+    Args:
+        balance: Valor do saldo a ser definido.
+        currency: Moeda (padrão: CVE).
+    """
+    log_tool_action("SET_BALANCE", f"Definir saldo: {currency} {balance}")
+    try:
+        uid = get_current_user_id()
+        with get_db_connection() as conn:
+            conn.execute(
+                "INSERT INTO account_balance (user_id, balance, currency) VALUES (?, ?, ?)",
+                (uid, balance, currency)
+            )
+            conn.commit()
+
+        clear_cache(uid)
+        return f"✅ Saldo definido: {currency} {balance:,.2f}"
+    except Exception as e:
+        return f"Erro ao definir saldo: {str(e)}"
 
 @tool
 def add_transaction(amount: float, transaction_type: str, description: str, category: str = "outros", date: str = None) -> str:
@@ -108,7 +133,8 @@ def add_transaction(amount: float, transaction_type: str, description: str, cate
             )
             cursor.execute("INSERT INTO account_balance (user_id, balance) VALUES (?, ?)", (uid, new_balance))
             conn.commit()
-            
+
+        clear_cache(uid)
         return f"✅ Transação registada. Novo saldo: CVE {new_balance:,.2f}"
     except Exception as e:
         return f"Erro ao registar transação: {str(e)}"
@@ -194,9 +220,124 @@ def get_user_profile() -> str:
         with get_db_connection() as conn:
             conn.row_factory = lambda cursor, row: {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
             rows = conn.execute("SELECT key, value FROM user_preferences WHERE user_id = ?", (uid,)).fetchall()
-        
+
         if not rows: return "Perfil incompleto."
         res = "📋 PERFIL:\n" + "\n".join([f"- {r['key'].capitalize()}: {r['value']}" for r in rows])
         return res
     except Exception as e:
         return f"Erro: {str(e)}"
+
+# ═══════════════════════════════════════════════════════════
+# PEÇA 5: TOOLS DE METAS FINANCEIRAS
+# ═══════════════════════════════════════════════════════════
+
+@tool
+def manage_goals(action: str, name: str = None, target_amount: float = 0, priority: str = "media", deadline: str = None, amount: float = 0) -> str:
+    """
+    Gere metas financeiras (create, update, delete, list).
+
+    Args:
+        action: 'create', 'update', 'delete' ou 'list'.
+        name: Nome da meta (obrigatório para create, update, delete).
+        target_amount: Valor objetivo (obrigatório para create).
+        priority: Prioridade da meta ('alta', 'media', 'baixa') - padrão 'media'.
+        deadline: Data limite no formato YYYY-MM-DD (opcional).
+        amount: Valor a adicionar ao progresso (obrigatório para update).
+    """
+    log_tool_action("MANAGE_GOALS", f"{action} Meta: {name}")
+    uid = get_current_user_id()
+
+    try:
+        with get_db_connection() as conn:
+            conn.row_factory = lambda cursor, row: {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
+            cursor = conn.cursor()
+
+            if action == "create":
+                if not name or target_amount <= 0:
+                    return "❌ Erro: 'name' e 'target_amount' (> 0) são obrigatórios para criar meta."
+
+                if priority.lower() not in ['alta', 'media', 'baixa']:
+                    return "❌ Erro: 'priority' deve ser 'alta', 'media' ou 'baixa'."
+
+                cursor.execute(
+                    "INSERT INTO financial_goals (user_id, name, target_amount, current_amount, deadline, priority, status) VALUES (?, ?, ?, 0, ?, ?, 'ativo')",
+                    (uid, name, target_amount, deadline, priority.lower())
+                )
+                conn.commit()
+
+                clear_cache(uid)
+                deadline_msg = f" até {deadline}" if deadline else ""
+                return f"🎯 Meta '{name}' criada com sucesso! Objetivo: CVE {target_amount:,.2f}{deadline_msg} (Prioridade: {priority.lower()})"
+
+            elif action == "update":
+                if not name or amount <= 0:
+                    return "❌ Erro: 'name' e 'amount' (> 0) são obrigatórios para atualizar progresso."
+
+                # Busca meta ativa
+                goal = cursor.execute(
+                    "SELECT id, target_amount, current_amount, status FROM financial_goals WHERE user_id = ? AND LOWER(name) = LOWER(?) AND status = 'ativo'",
+                    (uid, name)
+                ).fetchone()
+
+                if not goal:
+                    return f"❌ Meta '{name}' não encontrada ou já concluída/cancelada."
+
+                new_current = goal['current_amount'] + amount
+                new_status = 'concluido' if new_current >= goal['target_amount'] else 'ativo'
+
+                cursor.execute(
+                    "UPDATE financial_goals SET current_amount = ?, status = ? WHERE id = ?",
+                    (new_current, new_status, goal['id'])
+                )
+                conn.commit()
+
+                clear_cache(uid)
+                progress = (new_current / goal['target_amount']) * 100
+                if new_status == 'concluido':
+                    return f"🎉 PARABÉNS! Meta '{name}' CONCLUÍDA! {new_current:,.2f}/{goal['target_amount']:,.2f} CVE (100%)"
+                else:
+                    return f"✅ Progresso atualizado para '{name}': {new_current:,.2f}/{goal['target_amount']:,.2f} CVE ({progress:.1f}%)"
+
+            elif action == "delete":
+                if not name:
+                    return "❌ Erro: 'name' é obrigatório para cancelar meta."
+
+                result = cursor.execute(
+                    "UPDATE financial_goals SET status = 'cancelado' WHERE user_id = ? AND LOWER(name) = LOWER(?) AND status = 'ativo'",
+                    (uid, name)
+                )
+                conn.commit()
+
+                if result.rowcount == 0:
+                    return f"❌ Meta '{name}' não encontrada ou já concluída/cancelada."
+
+                clear_cache(uid)
+                return f"🗑️ Meta '{name}' cancelada com sucesso."
+
+            elif action == "list":
+                rows = cursor.execute(
+                    "SELECT name, target_amount, current_amount, deadline, priority, status FROM financial_goals WHERE user_id = ? ORDER BY CASE priority WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baixa' THEN 3 END, created_at",
+                    (uid,)
+                ).fetchall()
+
+                if not rows:
+                    return "📋 Nenhuma meta financeira registrada."
+
+                res = "🎯 SUAS METAS FINANCEIRAS:\n" + "="*40 + "\n"
+                for r in rows:
+                    progress = (r['current_amount'] / r['target_amount']) * 100
+                    status_emoji = "✅" if r['status'] == 'concluido' else "🔴" if r['status'] == 'cancelado' else "🔵"
+                    priority_emoji = "🔥" if r['priority'] == 'alta' else "⚡" if r['priority'] == 'media' else "💤"
+                    deadline_str = f" | Prazo: {r['deadline']}" if r['deadline'] else ""
+
+                    res += f"{status_emoji} {priority_emoji} {r['name']}\n"
+                    res += f"   Progresso: {r['current_amount']:,.2f}/{r['target_amount']:,.2f} CVE ({progress:.1f}%){deadline_str}\n"
+                    res += f"   Status: {r['status'].capitalize()} | Prioridade: {r['priority'].capitalize()}\n\n"
+
+                return res
+
+            else:
+                return "❌ Ação inválida. Use: 'create', 'update', 'delete' ou 'list'."
+
+    except Exception as e:
+        return f"❌ Erro ao gerir metas: {str(e)}"

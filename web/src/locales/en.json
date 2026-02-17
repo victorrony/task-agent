@@ -1,0 +1,61 @@
+{
+  "app.title": "FinanceAgent Pro",
+  "app.subtitle": "Intelligent financial management with AI",
+  "app.status.online": "Online",
+
+  "header.refresh.title": "Refresh data",
+  "header.hideValues": "Hide values",
+  "header.showValues": "Show values",
+
+  "stats.balance.title": "Total Balance",
+  "stats.profit.title": "Monthly Result",
+  "stats.health.title": "Financial Health",
+  "stats.goals.title": "Active Goals",
+  "stats.reserve.title": "Emergency Reserve",
+  "stats.trend.positive": "Positive",
+  "stats.trend.negative": "Negative",
+
+  "chart.title": "Balance Evolution",
+  "chart.empty": "No data for chart. Add transactions via chat.",
+  "chart.tooltip.balance": "Balance",
+
+  "transactions.title": "Recent Transactions",
+  "transactions.empty": "No transactions yet.",
+  "transactions.empty.cta": "Add one via chat.",
+
+  "goals.title": "Financial Goals",
+  "goals.empty": "No active goals.",
+  "goals.empty.cta": "Use chat to create a goal.",
+
+  "chat.title": "Financial Assistant",
+  "chat.mode.assistant": "Assistant",
+  "chat.mode.advisor": "Advisor",
+  "chat.placeholder": "Type your message...",
+  "chat.thinking": "Thinking...",
+  "chat.welcome": "Hello! I'm your FinanceAgent Pro. How can I help with your finances today?",
+  "chat.error": "Error connecting to agent. Check if the backend is running.",
+  "chat.attach": "Attach file",
+  "chat.fileTooBig": "File exceeds the 10MB limit",
+  "chat.unsupportedFile": "Unsupported file type",
+  "chat.stop": "Stop generation",
+  "chat.stopped": "Generation stopped by user.",
+
+  "quickCommands.title": "Quick Commands",
+  "quickCommands.analyze": "Analyze expenses",
+  "quickCommands.simulate": "Simulate investment",
+  "quickCommands.viewGoals": "View goals",
+  "quickCommands.addExpense": "Add expense",
+
+  "categories.title": "Expenses by Category",
+  "categories.empty": "No expense data. Add transactions via chat.",
+
+  "toast.saved": "Data saved successfully!",
+  "toast.goalUpdated": "Goal updated successfully!",
+  "toast.error": "Error processing. Try again.",
+  "toast.stopped": "Generation stopped",
+  "toast.fileAttached": "File attached",
+
+  "error.title": "Error loading",
+  "error.retry": "Try again",
+  "error.message": "Error loading data. Check if the backend is running."
+}

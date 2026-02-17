@@ -74,9 +74,12 @@ class FinancialAdvisor:
             total_exp_90 = trans_sums['total_90d_exp'] or 0
             monthly_expenses = total_exp_90 / 3 if total_exp_90 > 0 else FINANCIAL_CONFIG["monthly_expense_fallback"]
 
-            # 4. Reserva de Emergência
-            row_goal = cursor.execute("SELECT current_amount, target_amount FROM financial_goals WHERE user_id = ? AND name LIKE '%Emergencia%'", (self.user_id,)).fetchone()
-            current_reserve = row_goal['current_amount'] if row_goal else current_balance
+            # 4. Reserva de Emergência (busca meta com nome contendo "emergencia" ou "reserva")
+            row_goal = cursor.execute(
+                "SELECT current_amount, target_amount FROM financial_goals WHERE user_id = ? AND (LOWER(name) LIKE '%emergencia%' OR LOWER(name) LIKE '%reserva%') AND status = 'ativo' LIMIT 1",
+                (self.user_id,)
+            ).fetchone()
+            current_reserve = row_goal['current_amount'] if row_goal else 0
             
             # 5. Taxa de Poupança
             total_income = trans_sums['total_30d_inc'] or 0
